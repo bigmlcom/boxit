@@ -84,3 +84,9 @@ The `Extract Images` button will crop and save each boxed region as a
 seperate file in your browser's default download directory. This is
 especially useful for annotating heirarchial objects that will be
 modeled seperately.
+
+### License
+
+Copyright (C) 2019 BigML Inc.
+
+Distributed under the Apache License, Version 2.0.
