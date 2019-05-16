@@ -10,12 +10,13 @@ plate specific features.
 This app takes advantage of unusual browser features, so support may
 spotty.
 
-Currently tested on Chrome 69.0 and Firefox 62.0.
+Currently tested on Chrome 69.0 and Firefox 62.0. Chrome works best.
 
 ## Running Box It
 
-Simply clone this project and launch with a web server (such as
-[caddy](https://caddyserver.com/)).
+Clone this project and launch with a web server (such as
+[caddy](https://caddyserver.com/)), or simply go open 
+[https://bigmlcom.github.io/boxit/](https://bigmlcom.github.io/boxit/).
 
 ## Examples
 
