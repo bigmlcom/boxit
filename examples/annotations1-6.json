@@ -1,0 +1,184 @@
+[
+  {
+    "file": "image0.png",
+    "boxes": [
+      {
+        "name": "apple",
+        "x": 36,
+        "y": 43,
+        "width": 135,
+        "height": 126
+      }
+    ],
+    "imageWidth": 368,
+    "imageHeight": 219
+  },
+  {
+    "file": "image1.png",
+    "boxes": [
+      {
+        "name": "apple",
+        "x": 138,
+        "y": 68,
+        "width": 158,
+        "height": 158
+      }
+    ],
+    "imageWidth": 333,
+    "imageHeight": 253
+  },
+  {
+    "file": "image2.png",
+    "boxes": [
+      {
+        "name": "apple",
+        "x": 122,
+        "y": 60,
+        "width": 164,
+        "height": 136
+      },
+      {
+        "name": "apple",
+        "x": 13,
+        "y": 53,
+        "width": 120,
+        "height": 142
+      }
+    ],
+    "imageWidth": 293,
+    "imageHeight": 213
+  },
+  {
+    "file": "image3.png",
+    "boxes": [
+      {
+        "name": "raspberry",
+        "x": 140,
+        "y": 28,
+        "width": 126,
+        "height": 138
+      },
+      {
+        "name": "raspberry",
+        "x": 7,
+        "y": 23,
+        "width": 132,
+        "height": 128
+      }
+    ],
+    "imageWidth": 320,
+    "imageHeight": 179
+  },
+  {
+    "file": "image4.png",
+    "boxes": [
+      {
+        "name": "orange",
+        "x": 139,
+        "y": 38,
+        "width": 178,
+        "height": 160
+      },
+      {
+        "name": "orange",
+        "x": 10,
+        "y": 12,
+        "width": 146,
+        "height": 102
+      }
+    ],
+    "imageWidth": 327,
+    "imageHeight": 215
+  },
+  {
+    "file": "image5.png",
+    "boxes": [
+      {
+        "name": "orange",
+        "x": 220,
+        "y": 27,
+        "width": 47,
+        "height": 45
+      },
+      {
+        "name": "orange",
+        "x": 230,
+        "y": 89,
+        "width": 28,
+        "height": 27
+      },
+      {
+        "name": "orange",
+        "x": 149,
+        "y": 54,
+        "width": 42,
+        "height": 42
+      },
+      {
+        "name": "orange",
+        "x": 83,
+        "y": 25,
+        "width": 46,
+        "height": 43
+      },
+      {
+        "name": "orange",
+        "x": 59,
+        "y": 62,
+        "width": 43,
+        "height": 41
+      },
+      {
+        "name": "orange",
+        "x": 85,
+        "y": 98,
+        "width": 32,
+        "height": 32
+      },
+      {
+        "name": "orange",
+        "x": 3,
+        "y": 71,
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "orange",
+        "x": 179,
+        "y": 16,
+        "width": 41,
+        "height": 44
+      }
+    ],
+    "imageWidth": 288,
+    "imageHeight": 170
+  },
+  {
+    "file": "image6.png",
+    "boxes": [
+      {
+        "name": "strawberry",
+        "x": 19,
+        "y": 85,
+        "width": 128,
+        "height": 121
+      },
+      {
+        "name": "strawberry",
+        "x": 192,
+        "y": 56,
+        "width": 87,
+        "height": 70
+      },
+      {
+        "name": "strawberry",
+        "x": 244,
+        "y": 13,
+        "width": 73,
+        "height": 67
+      }
+    ],
+    "imageWidth": 335,
+    "imageHeight": 214
+  }
+]

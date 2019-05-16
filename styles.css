@@ -1,0 +1,145 @@
+
+html {
+    height: 100%;
+    font-size: 18px;
+}
+
+body {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    justify-content: space-between;
+}
+
+body:after {
+    content : "";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-image: url("bigml-logo.png");
+    background-repeat: no-repeat;
+    background-position: calc(50% - 100px) 50%;
+    width: 100%;
+    height: 100%;
+    opacity : 0.3;
+    z-index: -1;
+}
+
+#main {
+    flex-grow: 1;
+    flex-shrink: 0;
+    flex-basis: 600px;
+}
+
+#sidebar {
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 200px;
+    background-color: rgb(211, 228, 185);
+    border-left: 1px solid #ccc;
+}
+
+#sidebar-vert {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+#fileindex-slider {
+    width: 90%;
+    margin-left: 5%;
+}
+
+#fileindex-label {
+    margin-left: 10px;
+}
+
+#control-region {
+    padding: 10px;
+    display: flex;
+}
+
+#svg-region {
+    margin: auto;
+    height: 93%;
+    width: 95%;
+    image-rendering: pixelated;
+}
+
+#main-svg {
+    height: 100%;
+    width: 100%;
+    border: 1px solid #ccc;
+    background: repeating-linear-gradient( -45deg, #fff 0px, #fff 4px, #ddd 5px, #fff 6px);
+}
+
+.anno-box {
+    pointer-events: none;
+    stroke: #ff5555;
+    fill: #ff5555;
+    stroke-width: 2;
+    stroke-opacity: 0.8;
+    fill-opacity: 0.2;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.button {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    color: #444;
+    margin-bottom: 10px;
+    width: 160px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.button:hover {
+    border: 1px solid #888;
+    background-color: #444;
+    color: #fff;
+}
+
+#annot-group {
+    width: 96%;
+    flex-flow: column;
+    align-items: center;
+    padding: 4px;
+    margin-top: 15px;
+    border-top: 1px solid #444;
+}
+
+#mode-group {
+    margin-bottom: 10px;
+}
+
+#mode-label {
+    vertical-align: middle;
+}
+
+.annots {
+    display: flex;
+    flex-flow:row wrap;
+}
+
+.annot-label {
+    text-align: center;
+    font-size: 20px;
+    min-width: 18px;
+    padding: 4px;
+    margin: 2px;
+    border: 3px solid;
+    border-radius: 6px;
+}

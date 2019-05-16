@@ -1,0 +1,107 @@
+[
+  {
+    "file": "image7.png",
+    "boxes": [
+      {
+        "name": "pear",
+        "x": 170,
+        "y": 41,
+        "width": 92,
+        "height": 114
+      },
+      {
+        "name": "kiwi",
+        "x": 294,
+        "y": 107,
+        "width": 80,
+        "height": 65
+      },
+      {
+        "name": "kiwi",
+        "x": 163,
+        "y": 13,
+        "width": 56,
+        "height": 61
+      },
+      {
+        "name": "kiwi",
+        "x": 91,
+        "y": 120,
+        "width": 77,
+        "height": 81
+      },
+      {
+        "name": "orange",
+        "x": 232,
+        "y": 13,
+        "width": 60,
+        "height": 62
+      },
+      {
+        "name": "orange",
+        "x": 284,
+        "y": 48,
+        "width": 72,
+        "height": 67
+      },
+      {
+        "name": "orange",
+        "x": 248,
+        "y": 144,
+        "width": 79,
+        "height": 83
+      },
+      {
+        "name": "orange",
+        "x": 158,
+        "y": 150,
+        "width": 89,
+        "height": 97
+      },
+      {
+        "name": "orange",
+        "x": 58,
+        "y": 67,
+        "width": 77,
+        "height": 76
+      },
+      {
+        "name": "orange",
+        "x": 101,
+        "y": 27,
+        "width": 67,
+        "height": 66
+      }
+    ],
+    "imageWidth": 429,
+    "imageHeight": 266
+  },
+  {
+    "file": "image8.png",
+    "boxes": [
+      {
+        "name": "pear",
+        "x": 222,
+        "y": 12,
+        "width": 109,
+        "height": 178
+      },
+      {
+        "name": "pear",
+        "x": 123,
+        "y": 36,
+        "width": 99,
+        "height": 154
+      },
+      {
+        "name": "pear",
+        "x": 18,
+        "y": 17,
+        "width": 105,
+        "height": 172
+      }
+    ],
+    "imageWidth": 345,
+    "imageHeight": 209
+  }
+]
