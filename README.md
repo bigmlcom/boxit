@@ -15,7 +15,7 @@ Currently tested on Chrome 69.0 and Firefox 62.0. Chrome works best.
 ## Running Box It
 
 Clone this project and launch with a web server (such as
-[caddy](https://caddyserver.com/)), or simply go open 
+[caddy](https://caddyserver.com/)), or simply open 
 [https://bigmlcom.github.io/boxit/](https://bigmlcom.github.io/boxit/).
 
 ## Examples
