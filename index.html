@@ -50,6 +50,7 @@
      let rangeLabel;
      let currentAnnName;
      let activeBox;
+     let activeText;
      let colorHash = new ColorHash();
      let currentMode = "custom";
 
@@ -366,6 +367,14 @@
                  activeBox.setAttribute("x", x);
                  activeBox.setAttribute("y", y);
 
+                 activeText.setAttribute("x", x + (width / 2));
+                 activeText.setAttribute("y", y + height + 1);
+
+                 if (activeText.textContent == "") {
+                     activeText.style.fill = colorHash.hex(currentAnnName);
+                     activeText.textContent = currentAnnName;
+                 }
+
                  let i = image.boxes.length - 1;
                  image.boxes[i].x = x;
                  image.boxes[i].y = y;
@@ -384,6 +393,7 @@
                          }
                      }
                      activeBox = null;
+                     activeText = null;
                  } else {
                      if (currentAnnName) {
                          activeBox = initBox(currentAnnName);
@@ -397,6 +407,10 @@
                          activeBox.setAttribute("y", p1.y);
                          activeBox.setAttribute("width", 0);
                          activeBox.setAttribute("height", 0);
+
+                         activeText = initText("");
+                         activeText.setAttribute("x", p1.x);
+                         activeText.setAttribute("y", p1.y);
                      }
                  }
              }
@@ -429,8 +443,13 @@
                      box.setAttribute("y", boxInfo.y);
                      box.setAttribute("width", boxInfo.width);
                      box.setAttribute("height", boxInfo.height);
+
+                     let text = initText(pid);
+                     text.setAttribute("x", boxInfo.x + (boxInfo.width / 2));
+                     text.setAttribute("y", boxInfo.y + boxInfo.height + 1);
                  }
              }
+
              if (toSave) {
                  cropImg(image, reader.result, toSave, 0);
              }
@@ -450,6 +469,19 @@
          }, false);
 
          reader.readAsDataURL(files[index]);
+     }
+
+     function initText(id) {
+         var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+         text.textContent = id;
+         text.style.fill = colorHash.hex(id);
+         text.setAttribute("alignment-baseline", "hanging");
+         text.setAttribute("font-family", "monospace");
+         text.setAttribute("text-anchor", "middle");
+         text.setAttribute("font-size", "smaller");
+         let viewport = document.querySelector('.svg-pan-zoom_viewport');
+         viewport.appendChild(text);
+         return text;
      }
 
      function initBox(id) {
@@ -489,6 +521,9 @@
              activeBox = null;
 
              let viewport = document.querySelector('.svg-pan-zoom_viewport');
+             if (viewport.lastChild) {
+                 viewport.removeChild(viewport.lastChild);
+             }
              if (viewport.lastChild) {
                  viewport.removeChild(viewport.lastChild);
              }
