@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <link rel="shortcut icon" type="image/png" href="/favicon.png"/>
+        <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4goEAgYAB1TsNwAAAD5JREFUOMtjYBhWIJ+BgeE/kTgfmwGvSDDgPzYDcErgU8dEqb9HDWBgYMERykQDZjTD7IjUV8DAwHBymGQgAAddHTsLZjB0AAAAAElFTkSuQmCC"/>
         <meta charset="UTF-8">
         <title>Box It</title>
         <link rel="stylesheet" href="styles.css">
@@ -69,13 +69,16 @@
              for (let i = 0; i < files.length; i++) {
                  let file = files[i];
                  var image = window.localStorage.getItem(file.name);
+
                  if (image) {
                      images[i] = JSON.parse(image);
                  } else {
                      images[i] = {file: file.name,
                                   boxes: []};
                  }
+
              };
+
              let sidebarVert = document.querySelector('#sidebar-vert');
              let picker = document.querySelector('#customFileUpload');
              sidebarVert.removeChild(picker);
@@ -330,6 +333,10 @@
          return true;
      }
 
+     function makeTranslation(x, y) {
+         return "translate(" + x + " " + y + ")";
+     }
+
      function buildSVG(toSave = null) {
          let svgRegion = document.querySelector('#svg-region');
          let svgNew = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -367,12 +374,14 @@
                  activeBox.setAttribute("x", x);
                  activeBox.setAttribute("y", y);
 
-                 activeText.setAttribute("x", x + (width / 2));
-                 activeText.setAttribute("y", y + height + 1);
+                 var tx = x + (width / 2);
+                 var ty = y + height + 1;
+                 activeText.setAttribute("transform", makeTranslation(tx, ty));
 
-                 if (activeText.textContent == "") {
-                     activeText.style.fill = colorHash.hex(currentAnnName);
-                     activeText.textContent = currentAnnName;
+                 activeTextChild = activeText.childNodes[0];
+                 if (activeTextChild.textContent == "") {
+                     activeTextChild.style.fill = colorHash.hex(currentAnnName);
+                     activeTextChild.textContent = currentAnnName;
                  }
 
                  let i = image.boxes.length - 1;
@@ -408,9 +417,8 @@
                          activeBox.setAttribute("width", 0);
                          activeBox.setAttribute("height", 0);
 
-                         activeText = initText("");
-                         activeText.setAttribute("x", p1.x);
-                         activeText.setAttribute("y", p1.y);
+                         activeText = initText("", null, image.imageWidth);
+                         activeText.setAttribute("transform", makeTranslation(p1.x, p1.y));
                      }
                  }
              }
@@ -444,9 +452,12 @@
                      box.setAttribute("width", boxInfo.width);
                      box.setAttribute("height", boxInfo.height);
 
-                     let text = initText(pid);
-                     text.setAttribute("x", boxInfo.x + (boxInfo.width / 2));
-                     text.setAttribute("y", boxInfo.y + boxInfo.height + 1);
+                     let text = initText(pid, boxInfo.score, image.imageWidth);
+                     let tx = boxInfo.x + (boxInfo.width / 2);
+                     let ty = boxInfo.y + boxInfo.height + 1;
+                     text.setAttribute("transform", makeTranslation(tx, ty));
+                     // text.setAttribute("x", tx);
+                     // text.setAttribute("y", ty);
                  }
              }
 
@@ -471,17 +482,51 @@
          reader.readAsDataURL(files[index]);
      }
 
-     function initText(id) {
-         var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-         text.textContent = id;
-         text.style.fill = colorHash.hex(id);
-         text.setAttribute("alignment-baseline", "hanging");
-         text.setAttribute("font-family", "monospace");
-         text.setAttribute("text-anchor", "middle");
-         text.setAttribute("font-size", "smaller");
+     function prepTextElement(color, smallImage, scoreLabel) {
+         var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+         t.style.fill = color;
+         t.setAttribute("alignment-baseline", "hanging");
+         t.setAttribute("font-family", "monospace");
+         t.setAttribute("text-anchor", "middle");
+
+         if (smallImage && scoreLabel) {
+             t.setAttribute("font-size", "25%");
+         } else if (smallImage) {
+             t.setAttribute("font-size", "50%");
+         } else if (scoreLabel) {
+             t.setAttribute("font-size", "200%");
+         } else {
+             t.setAttribute("font-size", "250%");
+         }
+         return t;
+     }
+
+     function initText(id, score, imageWidth) {
+         var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+         var smallImage = imageWidth < 600;
+         var color = colorHash.hex(id);
+
+         var labelText = prepTextElement(color, smallImage, false);
+         labelText.textContent = id;
+         g.appendChild(labelText);
+
+         if (score != null) {
+             var scoreText = prepTextElement(color, smallImage, true);
+             var offset;
+             if (smallImage) {
+                 offset = 12;
+             } else {
+                 offset = 60;
+             }
+             scoreText.setAttribute("y", offset);
+             scoreText.textContent = score;
+             g.appendChild(scoreText);
+         }
+
          let viewport = document.querySelector('.svg-pan-zoom_viewport');
-         viewport.appendChild(text);
-         return text;
+         viewport.appendChild(g);
+         return g;
      }
 
      function initBox(id) {
