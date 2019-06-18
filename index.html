@@ -26,7 +26,7 @@
                 </label>
                 <div id="annot-group" hidden>
                     <div id="mode-group">
-                        <label id="mode-label">Mode</label>
+                        <label id="mode-label">Regions</label>
                         <select id="annotSelect">
                             <option id="customOption">Custom</option>
                             <option id="plateOption">License Plate</option>
@@ -53,6 +53,7 @@
      let activeText;
      let colorHash = new ColorHash();
      let currentMode = "custom";
+     let lastClass = "";
 
      let plateChars = ["0","1","2","3","4","5","6","7","8","9",
                        "A","B","C","D","E","F","G","H","I","J",
@@ -157,8 +158,10 @@
                      for (let i in images) {
                          let image = images[i];
                          window.localStorage.removeItem(image.file);
+                         delete image.name;
                          image.boxes = [];
                      }
+                     lastClass = "";
                      setSelectedAnnotation(null);
                      refreshAnnotations(false);
                      buildSVG();
@@ -178,12 +181,20 @@
                  buildSVG(toSave, 0);
              });
 
+             let classButton = document.createElement("label");
+             classButton.innerHTML = "Set Image Class";
+             classButton.setAttribute("class", "button");
+             classButton.addEventListener("click", function() {
+                 setImageClass();
+             });
+
              let annotGroup = document.querySelector('#annot-group');
              sidebarVert.insertBefore(loadButton, annotGroup);
              sidebarVert.insertBefore(loadLabel, annotGroup);
              sidebarVert.insertBefore(saveButton, annotGroup);
              sidebarVert.insertBefore(clearButton, annotGroup);
              sidebarVert.insertBefore(extractButton, annotGroup);
+             sidebarVert.insertBefore(classButton, annotGroup);
              annotGroup.hidden = false;
              annotGroup.style.display = "flex";
 
@@ -218,6 +229,24 @@
              buildSVG();
          }
      }, false);
+
+     function setImageClass() {
+         let image = images[imageIndex];
+         let defaultClass = lastClass;
+         if (image["name"] != null) {
+             defaultClass = image["name"];
+         }
+         let className = prompt("Image Class", defaultClass);
+         if (className) {
+             className = className.replace(/[\W]+/g,"_");
+             image["name"] = className;
+             lastClass = className;
+         } else {
+             delete image.name;
+         }
+         window.localStorage.setItem(image.file, JSON.stringify(image));
+         buildSVG();
+     }
 
      function greyCurrentLabel() {
          let oldLabel = document.querySelector('#' + currentMode + currentAnnName);
@@ -456,9 +485,16 @@
                      let tx = boxInfo.x + (boxInfo.width / 2);
                      let ty = boxInfo.y + boxInfo.height + 1;
                      text.setAttribute("transform", makeTranslation(tx, ty));
-                     // text.setAttribute("x", tx);
-                     // text.setAttribute("y", ty);
                  }
+             }
+
+             let name = image.name;
+             if (!toSave && 'name' in image && name != "") {
+                 let w = svgNew.clientWidth;
+                 let h = svgNew.clientHeight;
+                 let nameText = initText("Class: " + name, image.score, 1024);
+                 nameText.setAttribute("transform", makeTranslation(w/2, h-90));
+                 svgNew.appendChild(nameText);
              }
 
              if (toSave) {
@@ -501,7 +537,7 @@
          return t;
      }
 
-     function initText(id, score, imageWidth) {
+     function initText(id, score, imageWidth, skipViewport) {
          var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 
          var smallImage = imageWidth < 600;
@@ -524,8 +560,10 @@
              g.appendChild(scoreText);
          }
 
-         let viewport = document.querySelector('.svg-pan-zoom_viewport');
-         viewport.appendChild(g);
+         if (!skipViewport) {
+             let viewport = document.querySelector('.svg-pan-zoom_viewport');
+             viewport.appendChild(g);
+         }
          return g;
      }
 
@@ -560,17 +598,19 @@
          if (e.keyCode == 8) {
              e.preventDefault();
              let image = images[imageIndex];
-             image.boxes.pop();
-             window.localStorage.setItem(image.file, JSON.stringify(image));
-             isDrag = 0;
-             activeBox = null;
+             if (image.boxes.length > 0) {
+                 image.boxes.pop();
+                 window.localStorage.setItem(image.file, JSON.stringify(image));
+                 isDrag = 0;
+                 activeBox = null;
 
-             let viewport = document.querySelector('.svg-pan-zoom_viewport');
-             if (viewport.lastChild) {
-                 viewport.removeChild(viewport.lastChild);
-             }
-             if (viewport.lastChild) {
-                 viewport.removeChild(viewport.lastChild);
+                 let viewport = document.querySelector('.svg-pan-zoom_viewport');
+                 if (viewport.lastChild) {
+                     viewport.removeChild(viewport.lastChild);
+                 }
+                 if (viewport.lastChild) {
+                     viewport.removeChild(viewport.lastChild);
+                 }
              }
          }
      });
@@ -603,6 +643,9 @@
              case 39:
                  imageIndex = Math.min(imageIndex + 1, images.length - 1);
                  buildSVG();
+                 break;
+             case 13:
+                 setImageClass();
                  break;
          }
      };
