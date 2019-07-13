@@ -174,7 +174,8 @@
              extractButton.addEventListener("click", function() {
                  let toSave = [];
                  for (let i in images) {
-                     if (images[i].name || (images[i].boxes && images[i].boxes.length > 0)) {
+                     let image = images[i]
+                     if (image.boxes && image.boxes.length > 0) {
                          toSave.push(i);
                      }
                  }
@@ -694,7 +695,7 @@
                      validBoxes.push(box);
                  }
              }
-             if (validBoxes.length > 0) {
+             if (validBoxes.length > 0 || annotation.name) {
                  annotation.boxes = validBoxes;
                  validAnnotations.push(annotation);
              }
