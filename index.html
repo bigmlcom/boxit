@@ -174,7 +174,7 @@
              extractButton.addEventListener("click", function() {
                  let toSave = [];
                  for (let i in images) {
-                     if (images[i].boxes.length > 0 || "name" in images[i].name) {
+                     if (images[i].boxes.length > 0 || "name" in images[i]) {
                          toSave.push(i);
                      }
                  }
