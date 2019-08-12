@@ -15,7 +15,7 @@ Currently tested on Chrome 69.0 and Firefox 62.0. Chrome works best.
 ## Running Box It
 
 Clone this project and launch with a web server (such as
-[caddy](https://caddyserver.com/)), or simply open 
+[caddy](https://caddyserver.com/)), or simply open
 [https://bigmlcom.github.io/boxit/](https://bigmlcom.github.io/boxit/).
 
 ## Examples
@@ -46,6 +46,9 @@ may be annotated by simply clicking once to start an annotation box
 and a second time to finalize the box. A box can be deleted with
 backspace. If there are multiple boxes, they will be removed in the
 order they were created.
+
+To give the entire image a class label, either click the `Set Image
+Class` button or press the `enter` key.
 
 ### Annotation Modes
 
