@@ -1,793 +1,808 @@
-
-
 <!DOCTYPE html>
 <html>
-    <head>
-        <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4goEAgYAB1TsNwAAAD5JREFUOMtjYBhWIJ+BgeE/kTgfmwGvSDDgPzYDcErgU8dEqb9HDWBgYMERykQDZjTD7IjUV8DAwHBymGQgAAddHTsLZjB0AAAAAElFTkSuQmCC"/>
-        <meta charset="UTF-8">
-        <title>Box It</title>
-        <link rel="stylesheet" href="styles.css">
-        <script src="ext/svg-pan-zoom.min.js"></script>
-        <script src="ext/reimg.js"></script>
-        <script src="ext/color-hash.js"></script>
-    </head>
+  <head>
+    <link rel="icon" href="./img/square.ico"/>
+    <meta charset="UTF-8">
+    <title>Box It</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="ext/svg-pan-zoom.min.js"></script>
+    <script src="ext/reimg.js"></script>
+    <script src="ext/color-hash.js"></script>
+  </head>
 
-    <body>
-        <div id="main">
-            <div id="control-region">
-            </div>
-            <div id="svg-region"></div>
+  <body>
+    <div id="main">
+      <div id="control-region">
+      </div>
+      <div id="svg-region"></div>
+    </div>
+    <div id="sidebar">
+      <div id="sidebar-vert">
+        <input type="file" id="filepicker"
+               name="fileList" webkitdirectory multiple />
+        <label for="filepicker" id="customFileUpload" class="button">
+          Select Images
+        </label>
+        <div id="annot-group" hidden>
+          <div id="mode-group">
+            <label id="mode-label">Regions</label>
+            <select id="annotSelect">
+              <option id="customOption">Custom</option>
+              <option id="plateOption">License Plate</option>
+            </select>
+          </div>
+          <label id=new-annot-button class="button" hidden>New Annotation</label>
+          <div id="plate-annots" class="annots" hidden></div>
+          <div id="custom-annots" class="annots" hidden></div>
         </div>
-        <div id="sidebar">
-            <div id="sidebar-vert">
-                <input type="file" id="filepicker" name="fileList" webkitdirectory multiple />
-                <label for="filepicker" id="customFileUpload" class="button">
-                    Select Images
-                </label>
-                <div id="annot-group" hidden>
-                    <div id="mode-group">
-                        <label id="mode-label">Regions</label>
-                        <select id="annotSelect">
-                            <option id="customOption">Custom</option>
-                            <option id="plateOption">License Plate</option>
-                        </select>
-                    </div>
-                    <label id=new-annot-button class="button" hidden>New Annotation</label>
-                    <div id="plate-annots" class="annots" hidden></div>
-                    <div id="custom-annots" class="annots" hidden></div>
-                </div>
-            </div>
-        </div>
-    </body>
-
-    <script>
-     let boxEdit = 0;
-     let panZoom;
-     let files;
-     let images;
-     let imageIndex = 0;
-     let range;
-     let rangeLabel;
-     let currentAnnName;
-     let activeBox;
-     let activeText;
-     let colorHash = new ColorHash();
-     let currentMode = "custom";
-     let lastClass = "";
-
-     let plateChars = ["0","1","2","3","4","5","6","7","8","9",
-                       "A","B","C","D","E","F","G","H","I","J",
-                       "K","L","M","N","P","Q","R","S","T","U",
-                       "V","W","X","Y","Z"];
-     let customNames = [];
-
-     document.getElementById("filepicker").addEventListener("change", function(event) {
-         files = event.target.files;
-         if (files.length > 0) {
-             files = [].slice.call(files);
-             files.sort((a, b) => (a.name > b.name) ? 1 : -1)
-             images = new Array(files.length);
-             for (let i = 0; i < files.length; i++) {
-                 let file = files[i];
-                 var image = window.localStorage.getItem(file.name);
-
-                 if (image) {
-                     images[i] = JSON.parse(image);
-                 } else {
-                     images[i] = {file: file.name,
-                                  boxes: []};
-                 }
-
-             };
-
-             let sidebarVert = document.querySelector('#sidebar-vert');
-             let picker = document.querySelector('#customFileUpload');
-             sidebarVert.removeChild(picker);
-
-             rangeLabel = document.createElement("div");
-             rangeLabel.id = "fileindex-label";
-             rangeLabel.innerHTML = 0;
-
-             range = document.createElement("INPUT");
-             range.id = "fileindex-slider";
-             range.setAttribute("type", "range");
-             range.min = 0;
-             range.max = files.length - 1;
-             range.step = 1;
-             range.value = 0;
-             range.oninput = function() {
-                 imageIndex = parseInt(this.value);
-                 buildSVG();
-             };
-             range.addEventListener('keydown', function(e) {
-                 if (e.which === 37 || e.which === 39) {
-                     e.preventDefault();
-                 }
-             });
-
-             let controlRegion = document.querySelector('#control-region');
-             controlRegion.appendChild(range);
-             controlRegion.appendChild(rangeLabel);
-
-             let loadButton = document.createElement("input");
-             loadButton.id = "annotPicker";
-             loadButton.type = "file";
-             loadButton.accept = "application/json";
-             loadButton.addEventListener("change", function(evt1) {
-                 let reader  = new FileReader();
-                 reader.addEventListener("load", function (evt2) {
-                     let records = JSON.parse(evt2.target.result);
-                     let recordMap = new Map();
-                     for (let i in records) {
-                         let record = records[i];
-                         recordMap.set(record.file, record);
-                     }
-                     for (let i in images) {
-                         if (recordMap.has(images[i].file)) {
-                             let record = recordMap.get(images[i].file);
-                             images[i] = record;
-                             window.localStorage.setItem(record.file, JSON.stringify(record));
-                         }
-                     }
-                     refreshAnnotations(false);
-                     buildSVG();
-                 }, false);
-                 reader.readAsText(evt1.target.files[0]);
-                 this.value = null;
-             }, false);
-             let loadLabel = document.createElement("label");
-             loadLabel.setAttribute("class", "button");
-             loadLabel.setAttribute("for", "annotPicker");
-             loadLabel.innerHTML = "Load Annotations";
-
-             let saveButton = document.createElement("label");
-             saveButton.innerHTML = "Save Annotations";
-             saveButton.setAttribute("class", "button");
-             saveButton.addEventListener("click", function() {
-                 if (images) {
-                     toJSON(images);
-                 }
-             });
-
-             let clearButton = document.createElement("label");
-             clearButton.innerHTML = "Clear Annotations";
-             clearButton.setAttribute("class", "button");
-             clearButton.addEventListener("click", function() {
-                 if (confirm('Clear the cached annotations?')) {
-                     window.localStorage.clear();
-                     for (let i in images) {
-                         let image = images[i];
-                         window.localStorage.removeItem(image.file);
-                         delete image.name;
-                         image.boxes = [];
-                     }
-                     lastClass = "";
-                     setSelectedAnnotation(null);
-                     refreshAnnotations(false);
-                     buildSVG();
-                 }
-             });
-
-             let extractButton = document.createElement("label");
-             extractButton.innerHTML = "Extract Images";
-             extractButton.setAttribute("class", "button");
-             extractButton.addEventListener("click", function() {
-                 let toSave = [];
-                 for (let i in images) {
-                     let image = images[i]
-                     if (image.boxes && image.boxes.length > 0) {
-                         toSave.push(i);
-                     }
-                 }
-                 buildSVG(toSave, 0);
-             });
-
-             let classButton = document.createElement("label");
-             classButton.innerHTML = "Set Image Class";
-             classButton.setAttribute("class", "button");
-             classButton.addEventListener("click", function() {
-                 setImageClass();
-             });
-
-             let annotGroup = document.querySelector('#annot-group');
-             sidebarVert.insertBefore(loadButton, annotGroup);
-             sidebarVert.insertBefore(loadLabel, annotGroup);
-             sidebarVert.insertBefore(saveButton, annotGroup);
-             sidebarVert.insertBefore(clearButton, annotGroup);
-             sidebarVert.insertBefore(extractButton, annotGroup);
-             sidebarVert.insertBefore(classButton, annotGroup);
-             annotGroup.hidden = false;
-             annotGroup.style.display = "flex";
-
-             let addButton = document.querySelector("#new-annot-button");
-             addButton.addEventListener("click", function() {
-                 document.querySelector('#plateOption').disabled = true;
-                 let annName = prompt("New Annotation Name");
-                 if (annName) {
-                     annName = annName.replace(/[\W]+/g,"_");
-                     addAnnotation(annName, "custom");
-                 }
-             });
-
-             let selector = document.querySelector('#annotSelect');
-             selector.onchange = function(){
-                 if (selector.selectedIndex == 0) {
-                     greyCurrentLabel();
-                     updateCurrentMode("custom");
-                     refreshAnnotations(true);
-                     if (customNames.length == 1) {
-                         setSelectedAnnotation(customNames[0]);
-                     } else {
-                         setSelectedAnnotation(null);
-                     }
-                 } else {
-                     updateCurrentMode("plate");
-                     setSelectedAnnotation(null);
-                 }
-             };
-
-             refreshAnnotations(false);
-             buildSVG();
-         }
-     }, false);
-
-     function setImageClass() {
-         let image = images[imageIndex];
-         let defaultClass = lastClass;
-         if (image["name"] != null) {
-             defaultClass = image["name"];
-         }
-         let className = prompt("Image Class", defaultClass);
-         if (className) {
-             className = className.replace(/[\W]+/g,"_");
-             image["name"] = className;
-             lastClass = className;
-         } else {
-             delete image.name;
-         }
-         window.localStorage.setItem(image.file, JSON.stringify(image));
-         buildSVG();
-     }
-
-     function greyCurrentLabel() {
-         let oldLabel = document.querySelector('#' + currentMode + currentAnnName);
-         if (oldLabel) {
-             greyLabel(oldLabel);
-         }
-     }
-
-     function setSelectedAnnotation(annotationName) {
-         greyCurrentLabel(currentAnnName);
-         currentAnnName = annotationName;
-         if (annotationName) {
-             let newLabel = document.querySelector('#' + currentMode + currentAnnName);
-             colorLabel(newLabel);
-         }
-     }
-
-     function clearChildren(parent) {
-         while (parent.firstChild) {
-             parent.removeChild(parent.firstChild);
-         }
-     }
-
-     function refreshAnnotations(forceCustom) {
-         let selector = document.querySelector('#annotSelect');
-         let platesValid = possiblePlates();
-         let annotsValid = hasAnnotations();
-
-         customNames = [];
-         clearChildren(document.getElementById("custom-annots"));
-         clearChildren(document.getElementById("plate-annots"));
-
-         if (platesValid) {
-             for (i in plateChars) {
-                 addAnnotation(plateChars[i], "plate");
-             }
-         }
-
-         if (annotsValid) {
-             let annSet = annotationSet();
-             for (name of annSet) {
-                 addAnnotation(name, "custom");
-             }
-         }
-
-         if (!platesValid) {
-             document.querySelector('#plateOption').disabled = true;
-         } else {
-             document.querySelector('#plateOption').disabled = false;
-         }
-
-
-         if (annotsValid && platesValid && !forceCustom) {
-             selector.selectedIndex = 1;
-             updateCurrentMode("plate");
-             document.querySelector('#plateOption').disabled = false;
-         } else {
-             updateCurrentMode("custom");
-         }
-
-         if (currentMode == "custom" && customNames.length == 1) {
-             setSelectedAnnotation(customNames[0]);
-         }
-     }
-
-     function annotationSet() {
-         let annSet = new Set();
-
-         for (i in images) {
-             let image = images[i];
-             for (j in image.boxes) {
-                 annSet.add(image.boxes[j].name);
-             }
-         }
-         return annSet;
-     }
-
-     function hasAnnotations() {
-         for (i in images) {
-             if (images[i].boxes.length > 0) {
-                 return true;
-             }
-         }
-         return false;
-     }
-
-     function updateCurrentMode(mode) {
-         currentMode = mode;
-         if (currentMode == "plate") {
-             document.querySelector('#new-annot-button').hidden = true;
-             document.querySelector('#custom-annots').style.display = "none";
-             document.querySelector('#plate-annots').style.display = "flex";
-             document.querySelector('#annotSelect').selectedIndex = 1;
-         } else {
-             document.querySelector('#new-annot-button').hidden = false;
-             document.querySelector('#custom-annots').style.display = "flex";
-             document.querySelector('#plate-annots').style.display = "none";
-             document.querySelector('#annotSelect').selectedIndex = 0;
-         }
-     }
-
-     function possiblePlates() {
-         let plateSet = new Set(plateChars);
-
-         for (i in images) {
-             let image = images[i];
-             for (j in image.boxes) {
-                 if (!plateSet.has(image.boxes[j].name)) {
-                     return false;
-                 }
-             }
-         }
-         return true;
-     }
-
-     function makeTranslation(x, y) {
-         return "translate(" + x + " " + y + ")";
-     }
-
-     function buildSVG(toSave = null) {
-         let svgRegion = document.querySelector('#svg-region');
-         let svgNew = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-         svgNew.id = "main-svg";
-
-         let index;
-         if (toSave) {
-             index = toSave.pop();
-         } else {
-             index = imageIndex;
-         }
-         range.value = index;
-         rangeLabel.innerHTML = index;
-
-         let image = images[index];
-         let img = document.createElementNS('http://www.w3.org/2000/svg','image');
-
-         let isDrag = 0;
-         let p1;
-         let p2;
-
-         img.addEventListener("mousedown", function(){
-             isDrag = 0;
-         }, false);
-         img.addEventListener("mousemove", function(e){
-             isDrag = 1;
-             if (activeBox) {
-                 var p2 = getSvgPoint(e.offsetX, e.offsetY);
-                 var x = Math.min(p1.x, p2.x);
-                 var y = Math.min(p1.y, p2.y);
-                 var width = Math.abs(p1.x - p2.x);
-                 var height = Math.abs(p1.y - p2.y);
-                 activeBox.setAttribute("width", width);
-                 activeBox.setAttribute("height", height);
-                 activeBox.setAttribute("x", x);
-                 activeBox.setAttribute("y", y);
-
-                 var tx = x + (width / 2);
-                 var ty = y + height + 1;
-                 activeText.setAttribute("transform", makeTranslation(tx, ty));
-
-                 activeTextChild = activeText.childNodes[0];
-                 if (activeTextChild.textContent == "") {
-                     activeTextChild.style.fill = colorHash.hex(currentAnnName);
-                     activeTextChild.textContent = currentAnnName;
-                 }
-
-                 let i = image.boxes.length - 1;
-                 image.boxes[i].x = x;
-                 image.boxes[i].y = y;
-                 image.boxes[i].width = width;
-                 image.boxes[i].height = height;
-                 window.localStorage.setItem(image.file, JSON.stringify(image));
-             }
-         }, false);
-         img.addEventListener("mouseup", function(e){
-             if(isDrag === 0){
-                 if (activeBox) {
-                     if (image.boxes.length > 0) {
-                         let candidateBox = image.boxes[image.boxes.length - 1];
-                         if (candidateBox.width == 0 || candidateBox.height == 0) {
-                             image.boxes.pop();
-                         }
-                     }
-                     activeBox = null;
-                     activeText = null;
-                 } else {
-                     if (currentAnnName) {
-                         activeBox = initBox(currentAnnName);
-                         p1 = getSvgPoint(e.offsetX, e.offsetY);
-                         image.boxes.push({name: currentAnnName,
-                                           x: p1.x,
-                                           y: p1.y,
-                                           width: 0,
-                                           height: 0});
-                         activeBox.setAttribute("x", p1.x);
-                         activeBox.setAttribute("y", p1.y);
-                         activeBox.setAttribute("width", 0);
-                         activeBox.setAttribute("height", 0);
-
-                         activeText = initText("", null, image.imageWidth);
-                         activeText.setAttribute("transform", makeTranslation(p1.x, p1.y));
-                     }
-                 }
-             }
-         }, false);
-         img.addEventListener('load', function(e) {
-             let svgOld = document.querySelector('#main-svg');
-             if (svgOld) {
-                 svgRegion.removeChild(svgOld);
-             }
-
-             svgNew.appendChild(img);
-             svgRegion.appendChild(svgNew);
-             panZoom = svgPanZoom(svgNew);
-
-             let sizes = panZoom.getSizes();
-             image.imageWidth = sizes.viewBox.width;
-             image.imageHeight = sizes.viewBox.height;
-
-             if (image.boxes && image.boxes.length > 0) {
-                 for (i in image.boxes) {
-                     let boxInfo = image.boxes[i];
-                     let pid;
-                     if (boxInfo.char) {
-                         pid = boxInfo.char;
-                     } else {
-                         pid = boxInfo.name;
-                     }
-                     let box = initBox(pid);
-                     box.setAttribute("x", boxInfo.x);
-                     box.setAttribute("y", boxInfo.y);
-                     box.setAttribute("width", boxInfo.width);
-                     box.setAttribute("height", boxInfo.height);
-
-                     let text = initText(pid, boxInfo.score, image.imageWidth);
-                     let tx = boxInfo.x + (boxInfo.width / 2);
-                     let ty = boxInfo.y + boxInfo.height + 1;
-                     text.setAttribute("transform", makeTranslation(tx, ty));
-                 }
-             }
-
-             let name = image.name;
-             if (!toSave && 'name' in image && name != "") {
-                 let w = svgNew.clientWidth;
-                 let h = svgNew.clientHeight;
-                 let nameText = initText("Class: " + name, image.score, 1024);
-                 nameText.setAttribute("transform", makeTranslation(w/2, h-90));
-                 svgNew.appendChild(nameText);
-             }
-
-             if (toSave) {
-                 cropImg(image, reader.result, toSave, 0);
-             }
-         });
-
-         let reader  = new FileReader();
-         reader.addEventListener("load", function () {
-             // Firefox requires width/height for the SVG image, so we use a temporary image
-             // to find the actual width/height of the data URL.
-             let tmpImage = new Image();
-             tmpImage.onload = function() {
-                 img.setAttribute('width', tmpImage.width);
-                 img.setAttribute('height', tmpImage.height);
-                 img.setAttribute('href', reader.result);
-             }
-             tmpImage.src = reader.result;
-         }, false);
-
-         reader.readAsDataURL(files[index]);
-     }
-
-     function prepTextElement(color, smallImage, scoreLabel) {
-         var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-         t.style.fill = color;
-         t.setAttribute("alignment-baseline", "hanging");
-         t.setAttribute("font-family", "monospace");
-         t.setAttribute("text-anchor", "middle");
-
-         if (smallImage && scoreLabel) {
-             t.setAttribute("font-size", "25%");
-         } else if (smallImage) {
-             t.setAttribute("font-size", "50%");
-         } else if (scoreLabel) {
-             t.setAttribute("font-size", "200%");
-         } else {
-             t.setAttribute("font-size", "250%");
-         }
-         return t;
-     }
-
-     function initText(id, score, imageWidth, skipViewport) {
-         var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-         var smallImage = imageWidth < 600;
-         var color = colorHash.hex(id);
-
-         var labelText = prepTextElement(color, smallImage, false);
-         labelText.textContent = id;
-         g.appendChild(labelText);
-
-         if (score != null) {
-             var scoreText = prepTextElement(color, smallImage, true);
-             var offset;
-             if (smallImage) {
-                 offset = 12;
-             } else {
-                 offset = 60;
-             }
-             scoreText.setAttribute("y", offset);
-             scoreText.textContent = score;
-             g.appendChild(scoreText);
-         }
-
-         if (!skipViewport) {
-             let viewport = document.querySelector('.svg-pan-zoom_viewport');
-             viewport.appendChild(g);
-         }
-         return g;
-     }
-
-     function initBox(id) {
-         let box = document.createElementNS('http://www.w3.org/2000/svg','rect');
-         box.id = 'box' + id;
-         box.classList.add('anno-box');
-         let color = colorHash.hex(id);
-         box.style.stroke = color;
-         box.style.fill = color;
-         let viewport = document.querySelector('.svg-pan-zoom_viewport');
-         viewport.appendChild(box);
-         return box;
-     }
-
-     function getSvgPoint(x, y) {
-         const main_group_selector = ".svg-pan-zoom_viewport";
-         let svg = document.querySelector('#main-svg');
-         let svgDropPoint = svg.createSVGPoint();
-         let mg = document.querySelector('.svg-pan-zoom_viewport');
-         svgDropPoint.x = x;
-         svgDropPoint.y = y;
-         if (window.chrome) {
-             svgDropPoint = svgDropPoint.matrixTransform(mg.getCTM().inverse());
-             svgDropPoint.x = Math.round(svgDropPoint.x);
-             svgDropPoint.y = Math.round(svgDropPoint.y);
-         }
-         return svgDropPoint;
-     }
-
-     document.addEventListener('keydown', function(e) {
-         if (e.keyCode == 8) {
-             e.preventDefault();
-             let image = images[imageIndex];
-             if (image.boxes.length > 0) {
-                 image.boxes.pop();
-                 window.localStorage.setItem(image.file, JSON.stringify(image));
-                 isDrag = 0;
-                 activeBox = null;
-
-                 let viewport = document.querySelector('.svg-pan-zoom_viewport');
-                 if (viewport.lastChild) {
-                     viewport.removeChild(viewport.lastChild);
-                 }
-                 if (viewport.lastChild) {
-                     viewport.removeChild(viewport.lastChild);
-                 }
-             }
-         }
-     });
-
-     document.onkeydown = function(e) {
-         let code = e.keyCode;
-         if (currentMode == "plate") {
-             if (code >= 48 && code <= 90) {
-                 let char;
-                 if (code == 79) {
-                     char = "0";
-                 } else {
-                     char = String.fromCharCode(code);
-                 }
-                 setSelectedAnnotation(char);
-             }
-         } else {
-             if (code >= 48 && code <= 57) {
-                 let index = code - 48;
-                 if (index < customNames.length) {
-                     setSelectedAnnotation(customNames[index]);
-                 }
-             }
-         }
-         switch (code) {
-             case 37:
-                 imageIndex = Math.max(imageIndex - 1, 0);
-                 buildSVG();
-                 break;
-             case 39:
-                 imageIndex = Math.min(imageIndex + 1, images.length - 1);
-                 buildSVG();
-                 break;
-             case 13:
-                 setImageClass();
-                 break;
-         }
-     };
-
-     function cropImg(imgInfo, imgURL, toSave, boxIndex) {
-         if (imgInfo.boxes.length > boxIndex &&
-             imgInfo.boxes[boxIndex].width > 0 &&
-             imgInfo.boxes[boxIndex].height > 0) {
-             let box = imgInfo.boxes[boxIndex];
-             let canvas = document.createElement("canvas");
-             canvas.width = box.width;
-             canvas.height = box.height;
-             let context = canvas.getContext('2d');
-             var tmpImg = new Image();
-
-             tmpImg.onload = function() {
-                 context.drawImage(tmpImg, box.x, box.y, box.width, box.height,
-                                   0, 0, box.width, box.height);
-                 let file = imgInfo.file.split('.').slice(0, -1).join('.');
-                 file = file + '-' + boxIndex + "-" + box.name + '.png';
-                 ReImg.fromCanvas(canvas).downloadPng(file);
-                 // Timeout necessary for Chrome
-                 setTimeout(function() {
-                     cropImg(imgInfo, imgURL, toSave, boxIndex+1);
-                 }, 100);
-             };
-             tmpImg.src = imgURL;
-         } else {
-             if (toSave.length > 0) {
-                 buildSVG(toSave);
-             } else {
-                 buildSVG();
-             }
-         }
-     }
-
-     function toJSON(annotations) {
-         let clonedAnnotations = JSON.parse(JSON.stringify(annotations));
-         let validAnnotations = [];
-         for (let i in clonedAnnotations) {
-             let validBoxes = [];
-             let annotation = clonedAnnotations[i];
-             for (let j in annotation.boxes) {
-                 let box = annotation.boxes[j];
-                 if (box.width > 0 && box.height > 0) {
-                     validBoxes.push(box);
-                 }
-             }
-             if (validBoxes.length > 0 || annotation.name) {
-                 annotation.boxes = validBoxes;
-                 validAnnotations.push(annotation);
-             }
-         }
-
-         let json = JSON.stringify(validAnnotations, null, 2);
-         let filename = 'annotations.json';
-         let blob = new Blob([json], { type: 'text/json;charset=utf-8;' });
-         let link = document.createElement("a");
-         if (link.download !== undefined) {
-             let url = URL.createObjectURL(blob);
-             link.setAttribute("href", url);
-             link.setAttribute("download", filename);
-             link.style.visibility = 'hidden';
-             document.body.appendChild(link);
-             link.click();
-             document.body.removeChild(link);
-         }
-     }
-
-     function colorLabel(label) {
-         let color = colorHash.hex(label.innerHTML);
-         label.style.borderColor = color;
-         label.style.color = color;
-         label.style.backgroundColor = "#fff";
-     }
-
-     function greyLabel(label) {
-         label.style.borderColor = "#888";
-         label.style.color = "#888";
-         label.style.backgroundColor = "#ccc";
-     }
-
-     function addAnnotation(name, mode) {
-         if (mode == "custom") {
-             if (customNames.includes(name)) {
-                 return null;
-             } else {
-                 customNames.push(name);
-                 customNames.sort();
-             }
-         }
-
-         let label = document.createElement("label");
-         label.id = mode + name;
-         label.innerHTML = name;
-         label.setAttribute("class", "annot-label");
-         greyLabel(label);
-
-         label.addEventListener('click', function() {
-             setSelectedAnnotation(name);
-         });
-         label.addEventListener('mouseover', function() {
-             colorLabel(this);
-         });
-         label.addEventListener('mouseout', function() {
-             if (this.innerHTML != currentAnnName) {
-                 greyLabel(this);
-             }
-         });
-
-         let parent;
-         if (mode == "custom") {
-             parent = document.getElementById("custom-annots");
-         } else {
-             parent = document.getElementById("plate-annots");
-         }
-         parent.appendChild(label);
-         sortDivs(parent);
-
-         if (currentMode == "custom" && mode == "custom") {
-             setSelectedAnnotation(name);
-         }
-         return label;
-     }
-
-     function sortDivs(parent) {
-         Array.prototype.slice.call(parent.children)
-              .map(function (x) { return parent.removeChild(x); })
-              .sort(function (x, y) {
-                  if (x.innerHTML < y.innerHTML) return -1;
-                  if (x.innerHTML > y.innerHTML) return 1;
-                  return 0;
-              })
-              .forEach(function (x) { parent.appendChild(x); });
-     }
-
-     window.addEventListener("resize", function () {
-         if (images) {
-             buildSVG();
-         }
-     });
-
-    </script>
+      </div>
+    </div>
+  </body>
+
+  <script>
+    let boxEdit = 0;
+    let panZoom;
+    let files;
+    let images;
+    let imageIndex = 0;
+    let range;
+    let rangeLabel;
+    let currentAnnName;
+    let activeBox;
+    let activeText;
+    let colorHash = new ColorHash();
+    let currentMode = "custom";
+    let lastClass = "";
+
+    let plateChars = ["0","1","2","3","4","5","6","7","8","9",
+                      "A","B","C","D","E","F","G","H","I","J",
+                      "K","L","M","N","P","Q","R","S","T","U",
+                      "V","W","X","Y","Z"];
+    let customNames = [];
+
+    document.getElementById("filepicker").addEventListener("change", function(event) {
+      files = event.target.files;
+      if (files.length > 0) {
+        files = [].slice.call(files);
+        files.sort((a, b) => (a.name > b.name) ? 1 : -1)
+        images = new Array(files.length);
+        for (let i = 0; i < files.length; i++) {
+          let file = files[i];
+          var image = window.localStorage.getItem(file.name);
+          if (image) {
+            images[i] = JSON.parse(image);
+          } else {
+            images[i] = {file: file.name, boxes: []};
+          }
+
+        };
+
+        let sidebarVert = document.querySelector('#sidebar-vert');
+        let picker = document.querySelector('#customFileUpload');
+        sidebarVert.removeChild(picker);
+
+        rangeLabel = document.createElement("div");
+        rangeLabel.id = "fileindex-label";
+        rangeLabel.innerHTML = 0;
+
+        range = document.createElement("INPUT");
+        range.id = "fileindex-slider";
+        range.setAttribute("type", "range");
+        range.min = 0;
+        range.max = files.length - 1;
+        range.step = 1;
+        range.value = 0;
+        range.oninput = function() {
+          imageIndex = parseInt(this.value);
+          buildSVG();
+        };
+        range.addEventListener('keydown', function(e) {
+          if (e.which === 37 || e.which === 39) {
+            e.preventDefault();
+          }
+        });
+
+        let controlRegion = document.querySelector('#control-region');
+        controlRegion.appendChild(range);
+        controlRegion.appendChild(rangeLabel);
+
+        let loadButton = document.createElement("input");
+        loadButton.id = "annotPicker";
+        loadButton.type = "file";
+        loadButton.accept = "application/json";
+        loadButton.addEventListener("change", function(evt1) {
+          let reader  = new FileReader();
+          reader.addEventListener("load", function (evt2) {
+            let records = JSON.parse(evt2.target.result);
+            let recordMap = new Map();
+            for (let i in records) {
+              let record = records[i];
+              recordMap.set(record.file, record);
+            }
+            for (let i in images) {
+              if (recordMap.has(images[i].file)) {
+                let record = recordMap.get(images[i].file);
+                images[i] = record;
+                window.localStorage.setItem(record.file, JSON.stringify(record));
+              }
+            }
+            refreshAnnotations(false);
+            buildSVG();
+          }, false);
+          reader.readAsText(evt1.target.files[0]);
+          this.value = null;
+        }, false);
+        let loadLabel = document.createElement("label");
+        loadLabel.setAttribute("class", "button");
+        loadLabel.setAttribute("for", "annotPicker");
+        loadLabel.innerHTML = "Load Annotations";
+
+        let saveButton = document.createElement("label");
+        saveButton.innerHTML = "Save Annotations";
+        saveButton.setAttribute("class", "button");
+        saveButton.addEventListener("click", function() {
+          if (images) {
+            toJSON(images);
+          }
+        });
+
+        let clearButton = document.createElement("label");
+        clearButton.innerHTML = "Clear Annotations";
+        clearButton.setAttribute("class", "button");
+        clearButton.addEventListener("click", function() {
+          if (confirm('Clear the cached annotations?')) {
+            window.localStorage.clear();
+            for (let i in images) {
+              let image = images[i];
+              window.localStorage.removeItem(image.file);
+              delete image.name;
+              image.boxes = [];
+            }
+            lastClass = "";
+            setSelectedAnnotation(null);
+            refreshAnnotations(false);
+            buildSVG();
+          }
+        });
+
+        let extractButton = document.createElement("label");
+        extractButton.innerHTML = "Extract Images";
+        extractButton.setAttribute("class", "button");
+        extractButton.addEventListener("click", function() {
+          let toSave = [];
+          for (let i in images) {
+            let image = images[i]
+            if (image.boxes && image.boxes.length > 0) {
+              toSave.push(i);
+            }
+          }
+          buildSVG(toSave, 0);
+        });
+
+        let classButton = document.createElement("label");
+        classButton.innerHTML = "Set Image Class";
+        classButton.setAttribute("class", "button");
+        classButton.addEventListener("click", function() {
+          setImageClass();
+        });
+
+        let removeButton = document.createElement("label");
+        removeButton.innerHTML = "Remove Annotation";
+        removeButton.setAttribute("class", "button");
+        removeButton.addEventListener("click", function() {
+          removeAnnotation();
+        });
+
+        let annotGroup = document.querySelector('#annot-group');
+        sidebarVert.insertBefore(loadButton, annotGroup);
+        sidebarVert.insertBefore(loadLabel, annotGroup);
+        sidebarVert.insertBefore(saveButton, annotGroup);
+        sidebarVert.insertBefore(clearButton, annotGroup);
+        sidebarVert.insertBefore(extractButton, annotGroup);
+        sidebarVert.insertBefore(classButton, annotGroup);
+        sidebarVert.insertBefore(removeButton, annotGroup);
+        annotGroup.hidden = false;
+        annotGroup.style.display = "flex";
+
+        let addButton = document.querySelector("#new-annot-button");
+        addButton.addEventListener("click", function() {
+          document.querySelector('#plateOption').disabled = true;
+          let annName = prompt("New Annotation Name");
+          if (annName) {
+            annName = annName.replace(/[\W]+/g,"_");
+            addAnnotation(annName, "custom");
+          }
+        });
+
+        let selector = document.querySelector('#annotSelect');
+        selector.onchange = function(){
+          if (selector.selectedIndex == 0) {
+            greyCurrentLabel();
+            updateCurrentMode("custom");
+            refreshAnnotations(true);
+            if (customNames.length == 1) {
+              setSelectedAnnotation(customNames[0]);
+            } else {
+              setSelectedAnnotation(null);
+            }
+          } else {
+            updateCurrentMode("plate");
+            setSelectedAnnotation(null);
+          }
+        };
+
+        refreshAnnotations(false);
+        buildSVG();
+      }
+    }, false);
+
+    function removeAnnotation() {
+      let image = images[imageIndex];
+      window.localStorage.removeItem(image.file);
+      delete image.name;
+      image.boxes = [];
+      lastClass = "";
+      setSelectedAnnotation(null);
+      refreshAnnotations(false);
+      buildSVG();
+    }
+
+    function setImageClass() {
+      let image = images[imageIndex];
+      let defaultClass = lastClass;
+      if (image["name"] != null) {
+        defaultClass = image["name"];
+      }
+      let className = prompt("Image Class", defaultClass);
+      if (className) {
+        className = className.replace(/[\W]+/g,"_");
+        image["name"] = className;
+        lastClass = className;
+      } else {
+        delete image.name;
+      }
+      window.localStorage.setItem(image.file, JSON.stringify(image));
+      buildSVG();
+    }
+
+    function greyCurrentLabel() {
+      let oldLabel = document.querySelector('#' + currentMode + currentAnnName);
+      if (oldLabel) {
+        greyLabel(oldLabel);
+      }
+    }
+
+    function setSelectedAnnotation(annotationName) {
+      greyCurrentLabel(currentAnnName);
+      currentAnnName = annotationName;
+      if (annotationName) {
+        let newLabel = document.querySelector('#' + currentMode + currentAnnName);
+        colorLabel(newLabel);
+      }
+    }
+
+    function clearChildren(parent) {
+      while (parent.firstChild) {
+        parent.removeChild(parent.firstChild);
+      }
+    }
+
+    function refreshAnnotations(forceCustom) {
+      let selector = document.querySelector('#annotSelect');
+      let platesValid = possiblePlates();
+      let annotsValid = hasAnnotations();
+
+      customNames = [];
+      clearChildren(document.getElementById("custom-annots"));
+      clearChildren(document.getElementById("plate-annots"));
+
+      if (platesValid) {
+        for (i in plateChars) {
+          addAnnotation(plateChars[i], "plate");
+        }
+      }
+
+      if (annotsValid) {
+        let annSet = annotationSet();
+        for (name of annSet) {
+          addAnnotation(name, "custom");
+        }
+      }
+
+      if (!platesValid) {
+        document.querySelector('#plateOption').disabled = true;
+      } else {
+        document.querySelector('#plateOption').disabled = false;
+      }
+
+
+      if (annotsValid && platesValid && !forceCustom) {
+        selector.selectedIndex = 1;
+        updateCurrentMode("plate");
+        document.querySelector('#plateOption').disabled = false;
+      } else {
+        updateCurrentMode("custom");
+      }
+
+      if (currentMode == "custom" && customNames.length == 1) {
+        setSelectedAnnotation(customNames[0]);
+      }
+    }
+
+    function annotationSet() {
+      let annSet = new Set();
+      for (i in images) {
+        let image = images[i];
+        for (j in image.boxes) {
+          annSet.add(image.boxes[j].name);
+        }
+      }
+      return annSet;
+    }
+
+    function hasAnnotations() {
+      for (i in images) {
+        if (images[i].boxes.length > 0) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function updateCurrentMode(mode) {
+      currentMode = mode;
+      if (currentMode == "plate") {
+        document.querySelector('#new-annot-button').hidden = true;
+        document.querySelector('#custom-annots').style.display = "none";
+        document.querySelector('#plate-annots').style.display = "flex";
+        document.querySelector('#annotSelect').selectedIndex = 1;
+      } else {
+        document.querySelector('#new-annot-button').hidden = false;
+        document.querySelector('#custom-annots').style.display = "flex";
+        document.querySelector('#plate-annots').style.display = "none";
+        document.querySelector('#annotSelect').selectedIndex = 0;
+      }
+    }
+
+    function possiblePlates() {
+      let plateSet = new Set(plateChars);
+      for (i in images) {
+        let image = images[i];
+        for (j in image.boxes) {
+          if (!plateSet.has(image.boxes[j].name)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function makeTranslation(x, y) {
+      return "translate(" + x + " " + y + ")";
+    }
+
+    function buildSVG(toSave = null) {
+      let svgRegion = document.querySelector('#svg-region');
+      let svgNew = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svgNew.id = "main-svg";
+
+      let index;
+      if (toSave) {
+        index = toSave.pop();
+      } else {
+        index = imageIndex;
+      }
+      range.value = index;
+      rangeLabel.innerHTML = index;
+
+      let image = images[index];
+      let img = document.createElementNS('http://www.w3.org/2000/svg','image');
+
+      let isDrag = 0;
+      let p1;
+      let p2;
+
+      img.addEventListener("mousedown", function(){
+        isDrag = 0;
+      }, false);
+      img.addEventListener("mousemove", function(e){
+        isDrag = 1;
+        if (activeBox) {
+          var p2 = getSvgPoint(e.offsetX, e.offsetY);
+          var x = Math.min(p1.x, p2.x);
+          var y = Math.min(p1.y, p2.y);
+          var width = Math.abs(p1.x - p2.x);
+          var height = Math.abs(p1.y - p2.y);
+          activeBox.setAttribute("width", width);
+          activeBox.setAttribute("height", height);
+          activeBox.setAttribute("x", x);
+          activeBox.setAttribute("y", y);
+
+          var tx = x + (width / 2);
+          var ty = y + height + 1;
+          activeText.setAttribute("transform", makeTranslation(tx, ty));
+
+          activeTextChild = activeText.childNodes[0];
+          if (activeTextChild.textContent == "") {
+            activeTextChild.style.fill = colorHash.hex(currentAnnName);
+            activeTextChild.textContent = currentAnnName;
+          }
+
+          let i = image.boxes.length - 1;
+          image.boxes[i].x = x;
+          image.boxes[i].y = y;
+          image.boxes[i].width = width;
+          image.boxes[i].height = height;
+          window.localStorage.setItem(image.file, JSON.stringify(image));
+        }
+      }, false);
+      img.addEventListener("mouseup", function(e){
+        if(isDrag === 0){
+          if (activeBox) {
+            if (image.boxes.length > 0) {
+              let candidateBox = image.boxes[image.boxes.length - 1];
+              if (candidateBox.width == 0 || candidateBox.height == 0) {
+                image.boxes.pop();
+              }
+            }
+            activeBox = null;
+            activeText = null;
+          } else {
+            if (currentAnnName) {
+              activeBox = initBox(currentAnnName);
+              p1 = getSvgPoint(e.offsetX, e.offsetY);
+              image.boxes.push({name: currentAnnName,
+                                x: p1.x,
+                                y: p1.y,
+                                width: 0,
+                                height: 0});
+              activeBox.setAttribute("x", p1.x);
+              activeBox.setAttribute("y", p1.y);
+              activeBox.setAttribute("width", 0);
+              activeBox.setAttribute("height", 0);
+
+              activeText = initText("", null, image.imageWidth);
+              activeText.setAttribute("transform", makeTranslation(p1.x, p1.y));
+            }
+          }
+        }
+      }, false);
+      img.addEventListener('load', function(e) {
+        let svgOld = document.querySelector('#main-svg');
+        if (svgOld) {
+          svgRegion.removeChild(svgOld);
+        }
+
+        svgNew.appendChild(img);
+        svgRegion.appendChild(svgNew);
+        panZoom = svgPanZoom(svgNew);
+
+        let sizes = panZoom.getSizes();
+        image.imageWidth = sizes.viewBox.width;
+        image.imageHeight = sizes.viewBox.height;
+
+        if (image.boxes && image.boxes.length > 0) {
+          for (i in image.boxes) {
+            let boxInfo = image.boxes[i];
+            let pid;
+            if (boxInfo.char) {
+              pid = boxInfo.char;
+            } else {
+              pid = boxInfo.name;
+            }
+            let box = initBox(pid);
+            box.setAttribute("x", boxInfo.x);
+            box.setAttribute("y", boxInfo.y);
+            box.setAttribute("width", boxInfo.width);
+            box.setAttribute("height", boxInfo.height);
+
+            let text = initText(pid, boxInfo.score, image.imageWidth);
+            let tx = boxInfo.x + (boxInfo.width / 2);
+            let ty = boxInfo.y + boxInfo.height + 1;
+            text.setAttribute("transform", makeTranslation(tx, ty));
+          }
+        }
+
+        let name = image.name;
+        if (!toSave && 'name' in image && name != "") {
+          let w = svgNew.clientWidth;
+          let h = svgNew.clientHeight;
+          let nameText = initText("Class: " + name, image.score, 1024);
+          nameText.setAttribute("transform", makeTranslation(w/2, h-90));
+          svgNew.appendChild(nameText);
+        }
+
+        if (toSave) {
+          cropImg(image, reader.result, toSave, 0);
+        }
+      });
+
+      let reader  = new FileReader();
+      reader.addEventListener("load", function () {
+        // Firefox requires width/height for the SVG image, so we use a temporary image
+        // to find the actual width/height of the data URL.
+        let tmpImage = new Image();
+        tmpImage.onload = function() {
+          img.setAttribute('width', tmpImage.width);
+          img.setAttribute('height', tmpImage.height);
+          img.setAttribute('href', reader.result);
+        }
+        tmpImage.src = reader.result;
+      }, false);
+
+      reader.readAsDataURL(files[index]);
+    }
+
+    function prepTextElement(color, smallImage, scoreLabel) {
+      var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.style.fill = color;
+      t.setAttribute("alignment-baseline", "hanging");
+      t.setAttribute("font-family", "monospace");
+      t.setAttribute("text-anchor", "middle");
+
+      if (smallImage && scoreLabel) {
+        t.setAttribute("font-size", "20%");
+      } else if (smallImage) {
+        t.setAttribute("font-size", "40%");
+      } else if (scoreLabel) {
+        t.setAttribute("font-size", "180%");
+      } else {
+        t.setAttribute("font-size", "220%");
+      }
+      t.setAttribute("dy", 6);
+      return t;
+    }
+
+    function initText(id, score, imageWidth, skipViewport) {
+      var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+      var smallImage = imageWidth < 600;
+      var color = colorHash.hex(id);
+
+      var labelText = prepTextElement(color, smallImage, false);
+      labelText.textContent = id;
+      g.appendChild(labelText);
+
+      if (score != null) {
+        var scoreText = prepTextElement(color, smallImage, true);
+        var offset;
+        if (smallImage) {
+          offset = 12;
+        } else {
+          offset = 60;
+        }
+        scoreText.setAttribute("y", offset);
+        scoreText.textContent = score;
+        g.appendChild(scoreText);
+      }
+
+      if (!skipViewport) {
+        let viewport = document.querySelector('.svg-pan-zoom_viewport');
+        viewport.appendChild(g);
+      }
+      return g;
+    }
+
+    function initBox(id) {
+      let box = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      box.id = 'box' + id;
+      box.classList.add('anno-box');
+      let color = colorHash.hex(id);
+      box.style.stroke = color;
+      box.style.fill = color;
+      let viewport = document.querySelector('.svg-pan-zoom_viewport');
+      viewport.appendChild(box);
+      return box;
+    }
+
+    function getSvgPoint(x, y) {
+      const main_group_selector = ".svg-pan-zoom_viewport";
+      let svg = document.querySelector('#main-svg');
+      let svgDropPoint = svg.createSVGPoint();
+      let mg = document.querySelector('.svg-pan-zoom_viewport');
+      svgDropPoint.x = x;
+      svgDropPoint.y = y;
+      if (window.chrome) {
+        svgDropPoint = svgDropPoint.matrixTransform(mg.getCTM().inverse());
+        svgDropPoint.x = Math.round(svgDropPoint.x);
+        svgDropPoint.y = Math.round(svgDropPoint.y);
+      }
+      return svgDropPoint;
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.keyCode == 8) {
+        e.preventDefault();
+        let image = images[imageIndex];
+        if (image.boxes.length > 0) {
+          image.boxes.pop();
+          window.localStorage.setItem(image.file, JSON.stringify(image));
+          isDrag = 0;
+          activeBox = null;
+
+          let viewport = document.querySelector('.svg-pan-zoom_viewport');
+          if (viewport.lastChild) {
+            viewport.removeChild(viewport.lastChild);
+          }
+          if (viewport.lastChild) {
+            viewport.removeChild(viewport.lastChild);
+          }
+        }
+      }
+    });
+
+    document.onkeydown = function(e) {
+      let code = e.keyCode;
+      if (currentMode == "plate") {
+        if (code >= 48 && code <= 90) {
+          let char;
+          if (code == 79) {
+            char = "0";
+          } else {
+            char = String.fromCharCode(code);
+          }
+          setSelectedAnnotation(char);
+        }
+      } else {
+        if (code >= 48 && code <= 57) {
+          let index = code - 48;
+          if (index < customNames.length) {
+            setSelectedAnnotation(customNames[index]);
+          }
+        }
+      }
+      switch (code) {
+      case 37:
+        imageIndex = Math.max(imageIndex - 1, 0);
+        buildSVG();
+        break;
+      case 39:
+        imageIndex = Math.min(imageIndex + 1, images.length - 1);
+        buildSVG();
+        break;
+      case 13:
+        setImageClass();
+        break;
+      }
+    };
+
+    function cropImg(imgInfo, imgURL, toSave, boxIndex) {
+      if (imgInfo.boxes.length > boxIndex &&
+          imgInfo.boxes[boxIndex].width > 0 &&
+          imgInfo.boxes[boxIndex].height > 0) {
+        let box = imgInfo.boxes[boxIndex];
+        let canvas = document.createElement("canvas");
+        canvas.width = box.width;
+        canvas.height = box.height;
+        let context = canvas.getContext('2d');
+        var tmpImg = new Image();
+
+        tmpImg.onload = function() {
+          context.drawImage(tmpImg, box.x, box.y, box.width, box.height,
+                            0, 0, box.width, box.height);
+          let file = imgInfo.file.split('.').slice(0, -1).join('.');
+          file = file + '-' + boxIndex + "-" + box.name + '.png';
+          ReImg.fromCanvas(canvas).downloadPng(file);
+          // Timeout necessary for Chrome
+          setTimeout(function() {
+            cropImg(imgInfo, imgURL, toSave, boxIndex+1);
+          }, 100);
+        };
+        tmpImg.src = imgURL;
+      } else {
+        if (toSave.length > 0) {
+          buildSVG(toSave);
+        } else {
+          buildSVG();
+        }
+      }
+    }
+
+    function toJSON(annotations) {
+      let clonedAnnotations = JSON.parse(JSON.stringify(annotations));
+      let validAnnotations = [];
+      for (let i in clonedAnnotations) {
+        let validBoxes = [];
+        let annotation = clonedAnnotations[i];
+        for (let j in annotation.boxes) {
+          let box = annotation.boxes[j];
+          if (box.width > 0 && box.height > 0) {
+            validBoxes.push(box);
+          }
+        }
+        if (validBoxes.length > 0 || annotation.name) {
+          annotation.boxes = validBoxes;
+          validAnnotations.push(annotation);
+        }
+      }
+
+      let json = JSON.stringify(validAnnotations, null, 2);
+      let filename = 'annotations.json';
+      let blob = new Blob([json], { type: 'text/json;charset=utf-8;' });
+      let link = document.createElement("a");
+      if (link.download !== undefined) {
+        let url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+
+    function colorLabel(label) {
+      let color = colorHash.hex(label.innerHTML);
+      label.style.borderColor = color;
+      label.style.color = color;
+      label.style.backgroundColor = "#fff";
+    }
+
+    function greyLabel(label) {
+      label.style.borderColor = "#888";
+      label.style.color = "#888";
+      label.style.backgroundColor = "#ccc";
+    }
+
+    function addAnnotation(name, mode) {
+      if (mode == "custom") {
+        if (customNames.includes(name)) {
+          return null;
+        } else {
+          customNames.push(name);
+          customNames.sort();
+        }
+      }
+
+      let label = document.createElement("label");
+      label.id = mode + name;
+      label.innerHTML = name;
+      label.setAttribute("class", "annot-label");
+      greyLabel(label);
+
+      label.addEventListener('click', function() {
+        setSelectedAnnotation(name);
+      });
+      label.addEventListener('mouseover', function() {
+        colorLabel(this);
+      });
+      label.addEventListener('mouseout', function() {
+        if (this.innerHTML != currentAnnName) {
+          greyLabel(this);
+        }
+      });
+
+      let parent;
+      if (mode == "custom") {
+        parent = document.getElementById("custom-annots");
+      } else {
+        parent = document.getElementById("plate-annots");
+      }
+      parent.appendChild(label);
+      sortDivs(parent);
+
+      if (currentMode == "custom" && mode == "custom") {
+        setSelectedAnnotation(name);
+      }
+      return label;
+    }
+
+    function sortDivs(parent) {
+      Array.prototype.slice.call(parent.children)
+        .map(function (x) { return parent.removeChild(x); })
+        .sort(function (x, y) {
+          if (x.innerHTML < y.innerHTML) return -1;
+          if (x.innerHTML > y.innerHTML) return 1;
+          return 0;
+        })
+        .forEach(function (x) { parent.appendChild(x); });
+    }
+
+    window.addEventListener("resize", function () {
+      if (images) {
+        buildSVG();
+      }
+    });
+
+  </script>
 </html>
