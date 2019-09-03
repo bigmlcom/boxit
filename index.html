@@ -542,14 +542,18 @@
 
       if (smallImage && scoreLabel) {
         t.setAttribute("font-size", "20%");
+        t.setAttribute("dy", 15);
       } else if (smallImage) {
         t.setAttribute("font-size", "40%");
+        t.setAttribute("dy", 15);
       } else if (scoreLabel) {
         t.setAttribute("font-size", "180%");
+        t.setAttribute("dy", 30);
       } else {
         t.setAttribute("font-size", "220%");
+        t.setAttribute("dy", 30);
       }
-      t.setAttribute("dy", 6);
+
       return t;
     }
 
