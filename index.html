@@ -490,7 +490,6 @@
               activeBox.setAttribute("y", p1.y);
               activeBox.setAttribute("width", 0);
               activeBox.setAttribute("height", 0);
-
               activeText = initText(currentAnnName, null, image.imageWidth,
                                     undefined, index);
               /* Get all elements with class="close" */
@@ -557,7 +556,6 @@
       t.setAttribute("alignment-baseline", "alphabetical");
       t.setAttribute("font-family", "monospace");
       t.setAttribute("text-anchor", "middle");
-      t.setAttribute("class", "close");
 
       if (smallImage && scoreLabel) {
         t.setAttribute("font-size", "20%");
@@ -566,27 +564,33 @@
         t.setAttribute("font-size", "40%");
         t.setAttribute("dy", 8);
       } else if (scoreLabel) {
-        t.setAttribute("font-size", "180%");
-        t.setAttribute("dy", 30);
+        t.setAttribute("font-size", "100%");
+        t.setAttribute("dy", 15);
       } else {
-        t.setAttribute("font-size", "220%");
-        t.setAttribute("dy", 30);
+        t.setAttribute("font-size", "100%");
+        t.setAttribute("dy", 15);
       }
 
       return t;
     }
 
 
-    function initText(id, score, imageWidth, skipViewport, suffix) {
+    function initText(id, score, imageWidth, skipViewport, index) {
       var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.id = "label" + id + index;
       g.setAttribute("filter", "url(#solid)");
+      var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tspan.style.baselineShift = "10%";
+      tspan.textContent = " X ";
+      tspan.setAttribute("id", index + "_" + id)
+      tspan.setAttribute("class", "close");
       var smallImage = imageWidth < 600;
       var color = colorHash.hex(id);
 
       var labelText = prepTextElement(color, smallImage, false);
       text = id;
-      labelText.innerHTML = text + '<tspan style="baseline-shift: +10%;font-size:7px;"> x</tspan>'
-      labelText.setAttribute("id", suffix + "_" + id)
+      labelText.textContent = text;
+      labelText.appendChild(tspan);
       g.appendChild(labelText);
 
       if (score != null) {
@@ -653,7 +657,7 @@
         activeBox = null;
         let viewport = document.querySelector('.svg-pan-zoom_viewport');
         viewport.removeChild(document.getElementById("box" + pid + index));
-        elem.parentElement.removeChild(elem);
+        viewport.removeChild(document.getElementById("label" + pid + index));
         let j = 0;
         let boxes = [];
         for (j = 0; j < image.boxes.length; j++) {
