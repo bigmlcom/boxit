@@ -381,10 +381,39 @@
       return "translate(" + x + " " + y + ")";
     }
 
+    function createFilter() {
+      // gives a background to labels
+      let defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      let filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+      filter.setAttribute("x", 0);
+      filter.setAttribute("y", 0);
+      filter.setAttribute("width", 1);
+      filter.setAttribute("height", 1);
+      filter.id = "solid";
+      let feFlood = document.createElementNS("http://www.w3.org/2000/svg", "feFlood");
+      feFlood.style.floodColor = "white";
+      feFlood.setAttribute("result", "bg");
+      filter.appendChild(feFlood);
+      let feMerge = document.createElementNS("http://www.w3.org/2000/svg", "feMerge");
+      let feMergeNode = document.createElementNS("http://www.w3.org/2000/svg", "feMergeNode");
+      feMergeNode.setAttribute("in", "bg");
+      let feMergeNode2 = document.createElementNS("http://www.w3.org/2000/svg", "feMergeNode");
+      feMergeNode2.setAttribute("in", "SourceGraphic");
+      feMerge.appendChild(feMergeNode);
+      feMerge.appendChild(feMergeNode2);
+      filter.appendChild(feMerge);
+      defs.appendChild(filter);
+      return defs;
+    }
+
+
     function buildSVG(toSave = null) {
       let svgRegion = document.querySelector('#svg-region');
       let svgNew = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
       svgNew.id = "main-svg";
+      let filter = createFilter();
+      svgNew.appendChild(filter);
 
       let index;
       if (toSave) {
@@ -449,7 +478,8 @@
             activeText = null;
           } else {
             if (currentAnnName) {
-              activeBox = initBox(currentAnnName);
+              index = image.boxes.length
+              activeBox = initBox(currentAnnName, index);
               p1 = getSvgPoint(e.offsetX, e.offsetY);
               image.boxes.push({name: currentAnnName,
                                 x: p1.x,
@@ -461,7 +491,15 @@
               activeBox.setAttribute("width", 0);
               activeBox.setAttribute("height", 0);
 
-              activeText = initText("", null, image.imageWidth);
+              activeText = initText(currentAnnName, null, image.imageWidth,
+                                    undefined, index);
+              /* Get all elements with class="close" */
+              let closebtns = document.getElementsByClassName("close");
+              /* Loop through the elements, and hide the parent, when clicked on */
+              for (i = 0; i < closebtns.length; i++) {
+                closebtns[i].addEventListener("click", function() {
+                 activateClose(this, image);
+              });}
               activeText.setAttribute("transform", makeTranslation(p1.x, p1.y));
             }
           }
@@ -481,27 +519,7 @@
         image.imageWidth = sizes.viewBox.width;
         image.imageHeight = sizes.viewBox.height;
 
-        if (image.boxes && image.boxes.length > 0) {
-          for (i in image.boxes) {
-            let boxInfo = image.boxes[i];
-            let pid;
-            if (boxInfo.char) {
-              pid = boxInfo.char;
-            } else {
-              pid = boxInfo.name;
-            }
-            let box = initBox(pid);
-            box.setAttribute("x", boxInfo.x);
-            box.setAttribute("y", boxInfo.y);
-            box.setAttribute("width", boxInfo.width);
-            box.setAttribute("height", boxInfo.height);
-
-            let text = initText(pid, boxInfo.score, image.imageWidth);
-            let tx = boxInfo.x + (boxInfo.width / 2);
-            let ty = boxInfo.y + boxInfo.height + 1;
-            text.setAttribute("transform", makeTranslation(tx, ty));
-          }
-        }
+        drawBoxes(image)
 
         let name = image.name;
         if (!toSave && 'name' in image && name != "") {
@@ -536,9 +554,10 @@
     function prepTextElement(color, smallImage, scoreLabel) {
       var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       t.style.fill = color;
-      t.setAttribute("alignment-baseline", "hanging");
+      t.setAttribute("alignment-baseline", "alphabetical");
       t.setAttribute("font-family", "monospace");
       t.setAttribute("text-anchor", "middle");
+      t.setAttribute("class", "close");
 
       if (smallImage && scoreLabel) {
         t.setAttribute("font-size", "20%");
@@ -557,14 +576,17 @@
       return t;
     }
 
-    function initText(id, score, imageWidth, skipViewport) {
-      var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 
+    function initText(id, score, imageWidth, skipViewport, suffix) {
+      var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute("filter", "url(#solid)");
       var smallImage = imageWidth < 600;
       var color = colorHash.hex(id);
 
       var labelText = prepTextElement(color, smallImage, false);
-      labelText.textContent = id;
+      text = id;
+      labelText.innerHTML = text + '<tspan style="baseline-shift: +10%;font-size:7px;"> x</tspan>'
+      labelText.setAttribute("id", suffix + "_" + id)
       g.appendChild(labelText);
 
       if (score != null) {
@@ -587,9 +609,69 @@
       return g;
     }
 
-    function initBox(id) {
+    function drawBoxes(image) {
+      let boxesElement = document.querySelector('#boxes');
+      if (image.boxes && image.boxes.length > 0) {
+        let boxesInfo = "";
+        for (i in image.boxes) {
+          let boxInfo = image.boxes[i];
+          let pid;
+          if (boxInfo.char) {
+            pid = boxInfo.char;
+          } else {
+            pid = boxInfo.name;
+          }
+          let box = initBox(pid, i);
+          box.setAttribute("x", boxInfo.x);
+          box.setAttribute("y", boxInfo.y);
+          box.setAttribute("width", boxInfo.width);
+          box.setAttribute("height", boxInfo.height);
+
+          let text = initText(pid, boxInfo.score, image.imageWidth,
+                              undefined, i);
+          let tx = boxInfo.x + (boxInfo.width / 2);
+          let ty = boxInfo.y + boxInfo.height + 1;
+          text.setAttribute("transform", makeTranslation(tx, ty));
+        }
+
+       /* Get all elements with class="close" */
+       let closebtns = document.getElementsByClassName("close");
+       /* Loop through the elements, and hide the parent, when clicked on */
+       for (i = 0; i < closebtns.length; i++) {
+         closebtns[i].addEventListener("click", function() {
+          activateClose(this, image);
+       });
+      }}
+    }
+
+    function activateClose(elem, image) {
+      ref = elem.id.split("_");
+      index = ref[0];
+      pid = ref[1];
+      if (image.boxes.length > 0) {
+        isDrag = 0;
+        activeBox = null;
+        let viewport = document.querySelector('.svg-pan-zoom_viewport');
+        viewport.removeChild(document.getElementById("box" + pid + index));
+        elem.parentElement.removeChild(elem);
+        let j = 0;
+        let boxes = [];
+        for (j = 0; j < image.boxes.length; j++) {
+          if (index != j) {
+            boxes.push(image.boxes[j]);
+          }
+        }
+        image.boxes = boxes;
+        window.localStorage.setItem(image.file, JSON.stringify(image));
+      }
+    }
+
+    function initBox(id, index) {
       let box = document.createElementNS('http://www.w3.org/2000/svg','rect');
       box.id = 'box' + id;
+      if (typeof index !== "undefined") {
+        box.id += index;
+      }
       box.classList.add('anno-box');
       let color = colorHash.hex(id);
       box.style.stroke = color;

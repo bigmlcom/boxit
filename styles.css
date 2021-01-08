@@ -143,3 +143,20 @@ input[type="file"] {
     border: 3px solid;
     border-radius: 6px;
 }
+
+.closable-label {
+    min-width: 18px;
+    padding: 4px;
+    margin: 2px;
+    border: 3px solid;
+    border-radius: 6px;
+    background: white;
+}
+
+/* Style the close button (span) */
+.close {
+  cursor: pointer;
+  text-align: right;
+  width: 100%;
+  background: white;
+}
