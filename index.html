@@ -60,6 +60,28 @@
                       "V","W","X","Y","Z"];
     let customNames = [];
 
+
+    function toInnerFormat(records) {
+      let recordMap = new Map();
+      for (let i in records) {
+        let record = records[i];
+        let boxes = record.boxes;
+        for (let j in boxes) {
+          let box = boxes[j];
+          if (typeof box.label !== "undefined") {
+            let trBox = {x: box.xmin,
+                         y: box.ymin,
+                         name: box.label,
+                         width: box.width,
+                         height: box.height};
+            boxes[j] = trBox;
+          }
+        }
+        records[i].boxes = boxes;
+      }
+      return records;
+    }
+
     document.getElementById("filepicker").addEventListener("change", function(event) {
       files = event.target.files;
       if (files.length > 0) {
@@ -114,6 +136,7 @@
           let reader  = new FileReader();
           reader.addEventListener("load", function (evt2) {
             let records = JSON.parse(evt2.target.result);
+            records = toInnerFormat(records);
             let recordMap = new Map();
             for (let i in records) {
               let record = records[i];
@@ -797,6 +820,14 @@
         for (let j in annotation.boxes) {
           let box = annotation.boxes[j];
           if (box.width > 0 && box.height > 0) {
+            if (typeof box.label === "undefined") {
+              let trBox = {xmin: box.x,
+                           ymin: box.y,
+                           width: box.width,
+                           height: box.height,
+                           label: box.name}
+              box = trBox;
+            }
             validBoxes.push(box);
           }
         }
