@@ -674,7 +674,8 @@
     function activateClose(elem, image) {
       ref = elem.id.split("_");
       index = ref[0];
-      pid = ref[1];
+      pid = ref.slice(1).join("_");
+
       if (image.boxes.length > 0) {
         isDrag = 0;
         activeBox = null;

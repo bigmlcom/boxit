@@ -38,7 +38,7 @@ body:after {
 #sidebar {
     flex-grow: 0;
     flex-shrink: 0;
-    flex-basis: 200px;
+    flex-basis: 250px;
     background-color: rgb(211, 228, 185);
     border-left: 1px solid #ccc;
 }
